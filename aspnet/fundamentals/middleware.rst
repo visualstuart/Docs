@@ -2,7 +2,7 @@ Middleware
 ==========
 By `Steve Smith`_
 
-:doc:`owin`, the Open Web Interface for .NET, describes small application components that can be incorporated into an HTTP request pipeline as middleware. ASP.NET 5 has integrated support for middleware, which are wired up in an application's ``Configure`` method during :doc:`startup`.
+Small application components that can be incorporated into an HTTP request pipeline are known collectively as middleware. ASP.NET 5 has integrated support for middleware, which are wired up in an application's ``Configure`` method during :doc:`startup`.
 
 In this article:
 	- `What is middleware`_
@@ -15,12 +15,9 @@ In this article:
 What is middleware
 ------------------
 
-The `OWIN specification <http://owin.org/spec/spec/owin-1.0.0.html#Definition>`_ defines middleware as:
+Middleware are components that form a pipeline between a server and application for individual requests and responses. Each component can choose whether to pass the request on to the next component in the pipeline, and can perform certain actions before and after the next component in the pipeline. Request delegates are used to build this request pipeline, which are then used to handle each incoming HTTP request to your application. 
 
-middleware
-	"Pass through components that form a pipeline between a server and application to inspect, route, or modify request and response messages for a specific purpose."
-
-ASP.NET 5 implements the Open Web Interface for .NET (OWIN), which provides a standardized way for web applications to communicate with web servers, and specifies request delegates that respond to web requests. Request delegates are used to build the request pipeline that will be used to handle each incoming HTTP request to your application. Request delegates are configured using ``Run``, ``Map``, and ``Use`` extension methods on the ``IApplicationBuilder`` type that is passed into the ``Configure`` method in the ``Startup`` class. An individual request delegate can be specified in-line as an anonymous method, or it can be defined in a reusable class. These reusable classes  are `middleware`, or `middleware components`. Each middleware component in the request pipeline is responsible for invoking the next component in the chain, or choosing to short-circuit the chain if appropriate.
+Request delegates are configured using ``Run``, ``Map``, and ``Use`` extension methods on the ``IApplicationBuilder`` type that is passed into the ``Configure`` method in the ``Startup`` class. An individual request delegate can be specified in-line as an anonymous method, or it can be defined in a reusable class. These reusable classes  are `middleware`, or `middleware components`. Each middleware component in the request pipeline is responsible for invoking the next component in the chain, or choosing to short-circuit the chain if appropriate.
 
 Creating a middleware pipeline with IApplicationBuilder
 -------------------------------------------------------
@@ -70,7 +67,9 @@ You chain multiple request delegates together making a different call, with a ``
 	:emphasize-lines: 5,8,14
 	:dedent: 8
 
-.. note:: This ``ConfigureLogInline`` method is called when the application is run with an environment set to ``LogInline``. Learn more about :doc:`environments`. We will be using variations of ``Configure[Environment]`` to show different options in the rest of this article.
+.. warning:: Be wary of modifying ``HttpResponse`` after calling next, since one of the components further down the pipeline may have written to the response, causing it to be sent to the client.
+	
+.. note:: This ``ConfigureLogInline`` method is called when the application is run with an environment set to ``LogInline``. Learn more about :doc:`environments`. We will be using variations of ``Configure[Environment]`` to show different options in the rest of this article. See also :doc:`startup`.
 
 In the above example, the call to ``await next.Invoke()`` will call into the delegate on line 14. The client will receive the expected response ("Hello from LogInline"), and the server's console output includes both the before and after messages, as you can see here:
 
@@ -79,7 +78,7 @@ In the above example, the call to ``await next.Invoke()`` will call into the del
 Run, Map, and Use
 ^^^^^^^^^^^^^^^^^
 
-You configure the HTTP pipeline using the `extensions <https://github.com/aspnet/HttpAbstractions/tree/dev/src/Microsoft.AspNet.Http.Abstractions/Extensions>`_ ``Run``, ``Map``, and ``Use``. By convention, the ``Run`` method is simply a shorthand way of adding middleware to the pipeline that doesn't call any other middleware (that is, it will not call a ``next`` request delegate). The following two examples (one using ``Run`` and the other ``Use``) are equivalent to one another, since the second one doesn't use its ``next`` parameter:
+You configure the HTTP pipeline using the `extensions <https://github.com/aspnet/HttpAbstractions/tree/dev/src/Microsoft.AspNet.Http.Abstractions/Extensions>`_ ``Run``, ``Map``, and ``Use``. By convention, the ``Run`` method is simply a shorthand way of adding middleware to the pipeline that doesn't call any other middleware (that is, it will not call a ``next`` request delegate). Thus, ``Run`` should only be called at the end of your pipeline. ``Run`` is a convention, and some middleware components may expose their own Run[Middleware] methods that should only run at the end of the pipeline. The following two examples (one using ``Run`` and the other ``Use``) are equivalent to one another, since the second one doesn't use its ``next`` parameter:
 
 .. literalinclude:: middleware/sample/src/MiddlewareSample/Startup.cs
 	:language: c#
@@ -90,7 +89,7 @@ You configure the HTTP pipeline using the `extensions <https://github.com/aspnet
 
 .. note:: The `IApplicationBuilder interface <https://github.com/aspnet/HttpAbstractions/blob/1.0.0-beta5/src/Microsoft.AspNet.Http.Abstractions/IApplicationBuilder.cs#L17>`_ itself exposes a single ``Use`` method, so technically they're not all *extension* methods.
 
-We've already seen several examples of how to build a request pipeline with ``Use``. The ``Map`` extension method is used to match request delegates based on a request's path. ``Map`` simply accepts a path and a function that configures a separate middleware pipeline. In this example, any request with the base path of ``/maptest`` will be handled by the pipeline configured in the ``HandleMapTest`` method.
+We've already seen several examples of how to build a request pipeline with ``Use``. ``Map*`` extensions are used as a convention for branching the pipeline. The current implementation supports branching based based on the request's path, or using a predicate. The ``Map`` extension method is used to match request delegates based on a request's path. ``Map`` simply accepts a path and a function that configures a separate middleware pipeline. In the following example, any request with the base path of ``/maptest`` will be handled by the pipeline configured in the ``HandleMapTest`` method.
 
 .. literalinclude:: middleware/sample/src/MiddlewareSample/Startup.cs
 	:language: c#
@@ -99,6 +98,8 @@ We've already seen several examples of how to build a request pipeline with ``Us
 	:emphasize-lines: 11
 	:dedent: 8
 
+.. note:: When ``Map`` is used, the matched path segment(s) are removed from ``HttpRequest.Path`` and appended to ``HttpRequest.PathBase`` for each request.
+	
 In addition to path-based mapping, the ``MapWhen`` method supports predicate-based middleware branching, allowing separate pipelines to be constructed in a very flexible fashion. Any predicate of type ``Func<HttpContext, bool>`` can be used to map requests to a new branch of the pipeline. In the following example, a simple predicate is used to detect the presence of a querystring variable ``branch``:
 
 .. literalinclude:: middleware/sample/src/MiddlewareSample/Startup.cs
@@ -123,15 +124,16 @@ ASP.NET ships with the following middleware components:
 	   - Description
 	*  - :doc:`Authentication </security/sociallogins>`
 	   - Provides authentication support.
+	*  - `CORS <https://github.com/aspnet/CORS/tree/1.0.0-beta6>`_
+	   - Configures Cross-Origin Resource Sharing.
 	*  - :doc:`diagnostics`
 	   - Includes support for error pages and runtime information.
 	*  - :doc:`routing`
 	   - Define and constrain request routes.
+	*  - `Session <https://github.com/aspnet/Session>`_
+	   - Provides support for managing user sessions.
 	*  - :doc:`Static Files <static-files>`
 	   - Provides support for serving static files, and directory browsing.
-
-.. Do we need to list any of these? MVC, AuthorizeBasicMiddleware, Session, CORS, ResponseCaching
-
 
 Writing middleware
 ------------------
@@ -163,6 +165,8 @@ Using the extension method and associated middleware class, the ``Configure`` me
 	:emphasize-lines: 6
 	:dedent: 8
 	
+Middleware can also take advantage of the `UseMiddleware<T> <https://github.com/aspnet/HttpAbstractions/blob/1.0.0-beta6/src/Microsoft.AspNet.Http.Abstractions/Extensions/UseMiddlewareExtensions.cs>`_ extension to inject services directly into their constructors. Dependency injected services are automatically filled, and the extension takes a ``params`` array of arguments to be used for non-injected parameters. You can see this in action in the `UseStaticFiles <https://github.com/aspnet/StaticFiles/blob/1.0.0-beta6/src/Microsoft.AspNet.StaticFiles/StaticFileExtensions.cs#L44>`_ extension method, which is used to create the `StaticFileMiddleware <https://github.com/aspnet/StaticFiles/blob/1.0.0-beta6/src/Microsoft.AspNet.StaticFiles/StaticFileMiddleware.cs#L30>`_ with its required constructor parameters. In this case, the ``StaticFileOptions`` parameter is passed in, but other constructor parameters are supplied by ``UseMiddleware<T>`` and dependency injection.
+
 Summary
 -------
 
