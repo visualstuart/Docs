@@ -72,6 +72,13 @@ h1, h2, h3, h4, h5, h6, legend {
     margin-right: 0.5em;
 }
 
+.rst-content h1, 
+.rst-content h1 .headerlink
+{
+    font-size: 28px;
+    color: #222222;
+}
+
 .rst-content .note {
     background: #efefef;
     font: 'Segoe UI',Tahoma,Arial,Helvetica,sans-serif;
@@ -88,4 +95,26 @@ h1, h2, h3, h4, h5, h6, legend {
 .rst-content .note .last {
     font: 'Segoe UI',Tahoma,Arial,Helvetica,sans-serif;
     font-size: 14px;
+}
+
+.rst-content .toctree-wrapper ul li a,
+.rst-content .toctree-wrapper ul li a:hover,
+.rst-content .toctree-wrapper ul li a:visited
+{
+    color: #267cb2;
+    font-size: 16px;
+}
+
+.rst-content .toctree-wrapper ul li a:hover,
+.rst-content .toctree-wrapper ul li a:visited
+{
+    text-decoration: underline;
+}
+
+.rst-content ul li.toctree-l1>a {
+    font-weight: bold;
+}
+
+.rst-content ul li.toctree-l3 a {
+    color: #777777;
 }
