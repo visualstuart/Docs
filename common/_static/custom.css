@@ -79,22 +79,28 @@ h1, h2, h3, h4, h5, h6, legend {
     color: #222222;
 }
 
+.rst-content h1 a.headerlink,
+.rst-content h2 a.headerlink 
+{
+    display: inline;
+}
+
+.rst-content {
+    font-size: 16px;
+}
+
 .rst-content .note {
     background: #efefef;
     font: 'Segoe UI',Tahoma,Arial,Helvetica,sans-serif;
 }
 
-
-
 .rst-content .note .admonition-title {
-    
     background: #0054a3;
     font-weight: normal;
 }
 
 .rst-content .note .last {
     font: 'Segoe UI',Tahoma,Arial,Helvetica,sans-serif;
-    font-size: 14px;
 }
 
 .rst-content .toctree-wrapper ul li a,
@@ -102,7 +108,6 @@ h1, h2, h3, h4, h5, h6, legend {
 .rst-content .toctree-wrapper ul li a:visited
 {
     color: #267cb2;
-    font-size: 16px;
 }
 
 .rst-content .toctree-wrapper ul li a:hover,
@@ -117,4 +122,23 @@ h1, h2, h3, h4, h5, h6, legend {
 
 .rst-content ul li.toctree-l3 a {
     color: #777777;
+}
+
+.btn {
+    border-radius: 0;
+    border: none;
+    box-shadow: none;
+    font-family: 'Segoe UI',Tahoma,Arial,Helvetica,sans-serif;
+}
+
+.btn-neutral,
+.btn-neutral:visited 
+{
+    background-color: #dddddd !important;
+    color: #222222 !important;
+}
+
+.btn-neutral:hover {
+    background-color: #0054a3 !important;
+    color: #fff !important;
 }
