@@ -10,7 +10,7 @@
     "web": {
       "commandName": "web",
       "environmentVariables": {
-        "ASPNET_ENV": "LogInline"
+        "ASPNET_ENV": "LogMiddleware"
       }
     }
   }

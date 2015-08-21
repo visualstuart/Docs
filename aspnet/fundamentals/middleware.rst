@@ -15,7 +15,7 @@ In this article:
 What is middleware
 ------------------
 
-Middleware are components that form a pipeline between a server and application for individual requests and responses. Each component can choose whether to pass the request on to the next component in the pipeline, and can perform certain actions before and after the next component in the pipeline. Request delegates are used to build this request pipeline, which are then used to handle each incoming HTTP request to your application. 
+Middleware are components that are assembled into an application pipeline to handle requests and responses. Each component can choose whether to pass the request on to the next component in the pipeline, and can perform certain actions before and after the next component in the pipeline. Request delegates are used to build this request pipeline, which are then used to handle each incoming HTTP request to your application. 
 
 Request delegates are configured using ``Run``, ``Map``, and ``Use`` extension methods on the ``IApplicationBuilder`` type that is passed into the ``Configure`` method in the ``Startup`` class. An individual request delegate can be specified in-line as an anonymous method, or it can be defined in a reusable class. These reusable classes  are `middleware`, or `middleware components`. Each middleware component in the request pipeline is responsible for invoking the next component in the chain, or choosing to short-circuit the chain if appropriate.
 
@@ -67,7 +67,7 @@ You chain multiple request delegates together making a different call, with a ``
 	:emphasize-lines: 5,8,14
 	:dedent: 8
 
-.. warning:: Be wary of modifying ``HttpResponse`` after calling next, since one of the components further down the pipeline may have written to the response, causing it to be sent to the client.
+.. warning:: Be wary of modifying ``HttpResponse`` after invoking next, since one of the components further down the pipeline may have written to the response, causing it to be sent to the client.
 	
 .. note:: This ``ConfigureLogInline`` method is called when the application is run with an environment set to ``LogInline``. Learn more about :doc:`environments`. We will be using variations of ``Configure[Environment]`` to show different options in the rest of this article. The easiest way to run the samples in Visual Studio is with the ``web`` command, which is configured in ``hosting.ini`` to listen on ``http://localhost:5000``. See also :doc:`startup`.
 
@@ -146,17 +146,17 @@ For more complex request handling functionality, the ASP.NET team recommends imp
 	:linenos:
 	:emphasize-lines: 13, 19
 
-The middleware follows the `Explicit Dependencies Principle <http://deviq.com/explicit-dependencies-principle/>`_ and exposes all of its dependencies in its constructor. The extension method is responsible for providing the required dependencies. You can create overloads of the extension methods that allow dependencies to be passed in from the ``Configure`` method, as well. The ``UseRequestLogger`` extension method is shown below:
+The middleware follows the `Explicit Dependencies Principle <http://deviq.com/explicit-dependencies-principle/>`_ and exposes all of its dependencies in its constructor. Middleware can take advantage of the `UseMiddleware<T> <https://github.com/aspnet/HttpAbstractions/blob/1.0.0-beta6/src/Microsoft.AspNet.Http.Abstractions/Extensions/UseMiddlewareExtensions.cs>`_ extension to inject services directly into their constructors, as shown in the example below. Dependency injected services are automatically filled, and the extension takes a ``params`` array of arguments to be used for non-injected parameters.
 
 .. literalinclude:: middleware/sample/src/MiddlewareSample/RequestLoggerExtensions.cs
 	:language: c#
 	:caption: RequestLoggerExtensions.cs
 	:linenos:
-	:lines: 10-17
-	:emphasize-lines: 7
-	:dedent: 8
+	:lines: 5-11
+	:emphasize-lines: 5
+	:dedent: 4
 
-Using the extension method and associated middleware class, the ``Configure`` method becomes much simpler and more readable.
+Using the extension method and associated middleware class, the ``Configure`` method becomes very simple and readable.
 
 .. literalinclude:: middleware/sample/src/MiddlewareSample/Startup.cs
 	:language: c#
@@ -165,7 +165,13 @@ Using the extension method and associated middleware class, the ``Configure`` me
 	:emphasize-lines: 6
 	:dedent: 8
 	
-Middleware can also take advantage of the `UseMiddleware<T> <https://github.com/aspnet/HttpAbstractions/blob/1.0.0-beta6/src/Microsoft.AspNet.Http.Abstractions/Extensions/UseMiddlewareExtensions.cs>`_ extension to inject services directly into their constructors. Dependency injected services are automatically filled, and the extension takes a ``params`` array of arguments to be used for non-injected parameters. You can see this in action in the `UseStaticFiles <https://github.com/aspnet/StaticFiles/blob/1.0.0-beta6/src/Microsoft.AspNet.StaticFiles/StaticFileExtensions.cs#L44>`_ extension method, which is used to create the `StaticFileMiddleware <https://github.com/aspnet/StaticFiles/blob/1.0.0-beta6/src/Microsoft.AspNet.StaticFiles/StaticFileMiddleware.cs#L30>`_ with its required constructor parameters. In this case, the ``StaticFileOptions`` parameter is passed in, but other constructor parameters are supplied by ``UseMiddleware<T>`` and dependency injection.
+Although ``RequestLoggerMiddleware`` requires an ``ILoggerFactory`` parameter in its constructor, neither the ``Startup`` class nor the ``UseRequestLogger`` extension method need to explicitly supply it. Instead, it is automatically provided through dependency injection performed within ``UseMiddleware<T>``.
+
+Testing the middleware (by setting the ``ASPNET_ENV`` environment variable to ``LogMiddleware``) should result in output like the following (when using WebListener):
+
+.. image:: middleware/_static/console-logmiddleware.png
+
+.. note:: You can see another example of ``UseMiddleware<T>`` in action in the `UseStaticFiles <https://github.com/aspnet/StaticFiles/blob/1.0.0-beta6/src/Microsoft.AspNet.StaticFiles/StaticFileExtensions.cs#L44>`_ extension method, which is used to create the `StaticFileMiddleware <https://github.com/aspnet/StaticFiles/blob/1.0.0-beta6/src/Microsoft.AspNet.StaticFiles/StaticFileMiddleware.cs#L30>`_ with its required constructor parameters. In this case, the ``StaticFileOptions`` parameter is passed in, but other constructor parameters are supplied by ``UseMiddleware<T>`` and dependency injection.
 
 Summary
 -------
@@ -176,5 +182,4 @@ Additional Resources
 --------------------
 
 - :doc:`startup`
-- :doc:`owin`
 - :doc:`request-features`

@@ -10,15 +10,15 @@ namespace MiddlewareSample
         private readonly RequestDelegate _next;
         private readonly ILogger _logger;
 
-        public RequestLoggerMiddleware(RequestDelegate next, ILogger logger)
+        public RequestLoggerMiddleware(RequestDelegate next, ILoggerFactory loggerFactory)
         {
             _next = next;
-            _logger = logger;
+            _logger = loggerFactory.CreateLogger<RequestLoggerMiddleware>();
         }
 
         public async Task Invoke(HttpContext context)
         {
-            _logger.LogInformation("Handling request.");
+            _logger.LogInformation("Handling request: " + context.Request.Path);
             await _next.Invoke(context);
             _logger.LogInformation("Finished handling request.");
         }
